@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>干员强度演进模拟器 · 多分布版</title>
+<style>
+  :root {
+    --bg: #060a12;
+    --panel: rgba(15, 23, 42, 0.72);
+    --border: rgba(148, 163, 184, 0.14);
+    --text: #e6edf7;
+    --muted: #8fa3bd;
+    --accent: #a78bfa;
+    --accent-2: #38bdf8;
+    --gold: #fbbf24;
+    --radius: 20px;
+    --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { min-height: 100%; }
+
+  body {
+    margin: 0;
+    color: var(--text);
+    background:
+      radial-gradient(900px 600px at 12% -10%, rgba(167, 139, 250, 0.12), transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, rgba(56, 189, 248, 0.10), transparent 55%),
+      var(--bg);
+    font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(circle at 50% 18%, black, transparent 76%);
+  }
+
+  .app {
+    position: relative;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 38px 28px 54px;
+  }
+
+  .hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 26px;
+  }
+
+  .eyebrow {
+    margin: 0 0 10px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    background: linear-gradient(100deg, #ffffff 8%, #a5f3fc 56%, #fbbf24 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .subtitle {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .version-pill {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 14px;
+    padding: 6px 12px;
+    border: 1px solid rgba(167, 139, 250, 0.40);
+    border-radius: 999px;
+    background: rgba(167, 139, 250, 0.10);
+    color: #d8b4fe;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+
+  .hero-meta {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.52);
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.55);
+    animation: pulse 2.4s infinite;
+  }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.55); }
+    70% { box-shadow: 0 0 0 9px rgba(167, 139, 250, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0); }
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 354px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(20, 31, 52, 0.80), rgba(11, 18, 32, 0.86));
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+  }
+
+  .controls { padding: 20px; position: sticky; top: 18px; max-height: calc(100vh - 36px); overflow-y: auto; }
+
+  .panel-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .panel-heading h2 {
+    margin: 0;
+    color: #d7e2ef;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .panel-sub {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .hint { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  .ghost {
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: color 0.16s ease;
+  }
+
+  .ghost:hover { color: var(--accent); }
+
+  .field {
+    padding: 15px 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.10);
+  }
+
+  .field:first-of-type { border-top: 0; padding-top: 4px; }
+
+  .model-chip {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1px solid rgba(167, 139, 250, 0.18);
+    border-radius: 10px;
+    background: rgba(167, 139, 250, 0.06);
+    color: #c4b5fd;
+    font-size: 10.5px;
+    line-height: 1.55;
+    letter-spacing: 0.02em;
+  }
+
+  .field-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .field label {
+    color: #cbd5e1;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .field-note { color: var(--muted); font-size: 10.5px; }
+
+  .value-box {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(2, 6, 23, 0.55);
+  }
+
+  .value-box input {
+    width: 58px;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    color: var(--accent);
+    font-family: "Bahnschrift", "Consolas", monospace;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .value-box input::-webkit-outer-spin-button,
+  .value-box input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .value-box span { color: var(--muted); font-size: 11px; }
+
+  input[type="range"] {
+    width: 100%;
+    height: 5px;
+    margin: 0;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border: 3px solid #6d28d9;
+    border-radius: 50%;
+    appearance: none;
+    background: #f8fafc;
+    box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.14);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border: 3px solid #6d28d9;
+    border-radius: 50%;
+    background: #f8fafc;
+    box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.14);
+  }
+
+  .field-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 7px;
+    color: #64748b;
+    font-size: 10px;
+  }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: rgba(2, 6, 23, 0.55);
+  }
+
+  .segmented button {
+    padding: 8px 4px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+  }
+
+  .segmented button:hover { color: #d7e2ef; }
+
+  .segmented button.active {
+    color: #eafffb;
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.24), rgba(56, 189, 248, 0.18));
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.34);
+  }
+
+  .seed-field { border-bottom: 0; }
+
+  .seed-row { display: flex; gap: 8px; }
+
+  .seed-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    background: rgba(2, 6, 23, 0.55);
+    color: var(--text);
+    font-family: "Bahnschrift", "Consolas", monospace;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .seed-row input:focus { border-color: rgba(167, 139, 250, 0.55); }
+
+  .icon-btn {
+    width: 40px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(2, 6, 23, 0.55);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, transform 0.16s ease;
+  }
+
+  .icon-btn:hover { border-color: rgba(167, 139, 250, 0.45); transform: rotate(-8deg); }
+
+  .primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 13px 18px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 12px 32px rgba(167, 139, 250, 0.22);
+    color: #04121f;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .primary:hover { transform: translateY(-1px); box-shadow: 0 16px 42px rgba(167, 139, 250, 0.32); }
+  .primary:active { transform: translateY(0); }
+  .primary span { font-size: 17px; line-height: 1; }
+
+  .secondary {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: rgba(2, 6, 23, 0.35);
+    color: #cbd5e1;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, color 0.16s ease;
+  }
+
+  .secondary:hover:not(:disabled) { border-color: rgba(167, 139, 250, 0.4); color: #fff; }
+  .secondary:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  .rules {
+    margin-top: 15px;
+    padding-top: 13px;
+    border-top: 1px solid rgba(148, 163, 184, 0.10);
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+
+  .rules summary { color: #cbd5e1; cursor: pointer; }
+  .rules p { margin: 9px 0 0; line-height: 1.7; }
+  .rules code {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: rgba(251, 191, 36, 0.08);
+    color: var(--gold);
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 10.5px;
+  }
+
+  .results { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .stat {
+    position: relative;
+    overflow: hidden;
+    padding: 15px 16px 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(20, 31, 52, 0.82), rgba(11, 18, 32, 0.88));
+  }
+
+  .stat::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.45;
+  }
+
+  .stat.ratio::after { background: linear-gradient(90deg, var(--gold), transparent); }
+
+  .stat-label {
+    color: var(--muted);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+  }
+
+  .stat-value {
+    margin-top: 8px;
+    overflow: hidden;
+    color: #f8fafc;
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    font-size: clamp(20px, 2.1vw, 28px);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stat-value.accent { color: var(--gold); }
+
+  .stat-sub { margin-top: 5px; color: var(--muted); font-size: 10.5px; }
+
+  .chart-panel, .table-panel { padding: 18px 20px 20px; }
+
+  .dist-panel { padding: 18px 20px 16px; }
+
+  .dist-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .dist-meta span {
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .dist-meta b {
+    margin-left: 4px;
+    color: #e9d5ff;
+    font-family: "Bahnschrift", "Consolas", monospace;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dist-chart { margin-top: 4px; }
+  .dist-chart svg { display: block; width: 100%; height: auto; }
+  .dist-axis-label {
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .dist-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10.5px;
+  }
+
+  .sw {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 5px;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+
+  .sw1 { background: rgba(167, 139, 250, 0.55); }
+  .sw2 { background: rgba(167, 139, 250, 0.26); }
+  .sw3 { background: rgba(251, 191, 36, 0.36); }
+  .dist-note { margin-left: auto; color: #64748b; }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    color: var(--muted);
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  .badge {
+    padding: 3px 8px;
+    border: 1px solid rgba(251, 191, 36, 0.20);
+    border-radius: 999px;
+    background: rgba(251, 191, 36, 0.08);
+    color: var(--gold);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .chart { width: 100%; min-height: 290px; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .grid-line { stroke: rgba(148, 163, 184, 0.11); stroke-width: 1; }
+  .tick-line { stroke: rgba(148, 163, 184, 0.22); stroke-width: 1; }
+  .axis-text { fill: #7f93ad; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 11px; }
+  .axis-title { fill: #9fb3c8; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 11px; letter-spacing: 0.08em; }
+  .baseline { stroke: rgba(148, 163, 184, 0.38); stroke-width: 1; stroke-dasharray: 4 5; }
+  .baseline-label { fill: #64748b; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 10px; }
+  .final-label { fill: var(--gold); font-family: "Bahnschrift", "Segoe UI", sans-serif; font-size: 12px; font-weight: 700; }
+  .marker { fill: var(--gold); stroke: #0b1424; stroke-width: 1.5; }
+  .compare-marker { fill: #38bdf8; stroke: #0b1424; stroke-width: 1.2; }
+  .compare-line {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 7 5;
+    opacity: 0.92;
+  }
+  .chart-line {
+    fill: none;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 1.05s 0.08s ease forwards;
+  }
+  .chart-area { opacity: 0; animation: fadeIn 0.9s 0.18s ease forwards; }
+
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .table-wrap {
+    max-height: 358px;
+    overflow: auto;
+    border: 1px solid rgba(148, 163, 184, 0.10);
+    border-radius: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 10px 13px;
+    border-bottom: 1px solid var(--border);
+    background: #0b1424;
+    color: var(--muted);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  thead th:first-child, tbody td:first-child { text-align: left; }
+
+  tbody td {
+    padding: 9px 13px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+    color: #cbd5e1;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  tbody tr:hover { background: rgba(167, 139, 250, 0.04); }
+  tbody tr.initial td { color: #8496ad; }
+  tbody tr.final { background: rgba(251, 191, 36, 0.065); }
+  tbody tr.final td { color: #ffffff; }
+  tbody tr.final td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+  .record { color: var(--gold); font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 11px; }
+  .muted { color: #64748b; }
+
+
+  .controls {
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+  }
+
+  .controls::-webkit-scrollbar { width: 6px; }
+  .controls::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.22);
+  }
+
+  .avg-panel {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .avg-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .avg-head h3 {
+    margin: 0;
+    color: #d7e2ef;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .avg-head p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .avg-runs {
+    flex: none;
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    padding: 4px 7px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(2, 6, 23, 0.55);
+  }
+
+  .avg-runs input {
+    width: 42px;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    color: var(--accent);
+    font: 700 13px "Bahnschrift", "Consolas", monospace;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .avg-runs span { color: var(--muted); font-size: 10px; }
+
+  .avg-main {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(251, 191, 36, 0.16);
+    border-radius: 11px;
+    background: rgba(251, 191, 36, 0.05);
+  }
+
+  .avg-main-label { display: block; color: var(--muted); font-size: 10px; }
+
+  .avg-main strong {
+    display: inline-block;
+    margin-top: 3px;
+    color: var(--gold);
+    font: 700 24px "Bahnschrift", "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .avg-main-sub { display: block; margin-top: 1px; color: #64748b; font-size: 9.5px; }
+
+  .avg-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .avg-row > div {
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(2, 6, 23, 0.3);
+  }
+
+  .avg-row span { display: block; color: var(--muted); font-size: 9.5px; }
+
+  .avg-row b {
+    display: block;
+    margin-top: 3px;
+    color: #e2e8f0;
+    font: 700 13px "Bahnschrift", "Consolas", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .avg-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(2, 6, 23, 0.35);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+
+  .avg-btn:hover { border-color: var(--accent); background: rgba(2, 6, 23, 0.55); }
+  .avg-btn:disabled { opacity: 0.55; cursor: wait; }
+
+  .avg-hint {
+    margin: 7px 0 0;
+    color: #64748b;
+    font-size: 9.5px;
+    text-align: center;
+  }
+
+  .footer {
+    margin-top: 26px;
+    color: #5f7187;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .footer a:hover { text-decoration: underline; }
+
+  .model-select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    background: rgba(2, 6, 23, 0.55);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .model-select:focus { border-color: rgba(167, 139, 250, 0.55); }
+  .model-select.compact { width: 158px; padding: 7px 9px; font-size: 11px; }
+  .model-note { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+
+  .compare-panel { padding: 18px 20px 16px; }
+  .compare-select { display: flex; align-items: center; gap: 8px; }
+  .compare-select label { color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .compare-card {
+    padding: 13px 15px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: rgba(2, 6, 23, 0.28);
+  }
+
+  .compare-card.current { border-color: rgba(196, 181, 253, 0.28); background: rgba(167, 139, 250, 0.06); }
+  .compare-card.alt { border-color: rgba(56, 189, 248, 0.22); background: rgba(56, 189, 248, 0.045); }
+  .compare-tag { color: var(--muted); font-size: 9.5px; letter-spacing: 0.08em; }
+  .compare-model { margin-top: 5px; color: #e2e8f0; font-size: 12px; }
+
+  .compare-ratio {
+    margin-top: 3px;
+    color: var(--gold);
+    font: 700 25px "Bahnschrift", "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .compare-card.alt .compare-ratio { color: #7dd3fc; }
+  .compare-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 7px; }
+  .compare-meta span { color: var(--muted); font-size: 10px; }
+  .compare-meta b { margin-left: 4px; color: #cbd5e1; font-family: "Bahnschrift", "Consolas", monospace; font-size: 11px; }
+  .compare-vs { align-self: center; color: #64748b; font: 700 10px "Bahnschrift", sans-serif; letter-spacing: 0.12em; }
+  .compare-diff { margin-top: 10px; color: var(--muted); font-size: 10.5px; }
+  .compare-diff b { color: #e2e8f0; }
+
+  .legend-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .legend-dot.current { background: #c4b5fd; box-shadow: 0 0 8px rgba(196, 181, 253, 0.5); }
+  .legend-dot.compare { background: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
+
+  .hero, .controls, .results > * {
+    animation: rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .results > *:nth-child(2) { animation-delay: 0.06s; }
+  .results > *:nth-child(3) { animation-delay: 0.12s; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 1120px) {
+    .layout { grid-template-columns: 1fr; }
+    .controls { position: static; max-height: none; overflow: visible; }
+    .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 760px) {
+    .app { padding: 26px 14px 40px; }
+    .hero { align-items: flex-start; flex-direction: column; }
+    .layout { gap: 14px; }
+    .panel { border-radius: 16px; }
+    .controls, .chart-panel, .table-panel { padding: 16px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .stat { padding: 12px 13px; }
+    .stat-value { font-size: 21px; }
+    .panel-heading { flex-wrap: wrap; }
+    .table-wrap { max-height: 330px; }
+    .version-pill { display: block; width: max-content; margin: 10px 0 0; }
+    .dist-note { width: 100%; margin-left: 0; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .compare-vs { display: none; }
+    .compare-select { width: 100%; justify-content: space-between; }
+    .model-select.compact { flex: 1; width: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">MULTI-DISTRIBUTION SIMULATOR</p>
+      <h1>干员强度演进模拟器<span class="version-pill">多分布版</span></h1>
+      <p class="subtitle">同一组初始干员与参数下，对比均匀、正态、三角、Beta 与截断指数分布。</p>
+    </div>
+    <div class="hero-meta"><span class="pulse"></span> 浏览器本地运行 · 无需联网</div>
+  </header>
+
+  <section class="layout">
+    <aside class="panel controls">
+      <div class="panel-heading">
+        <h2>模拟参数</h2>
+        <button type="button" class="ghost" id="resetBtn">恢复默认</button>
+      </div>
+
+      <div class="field">
+        <div class="field-top">
+          <label for="modelSelect">概率分布模型</label>
+          <span class="field-note">只改变新增强度分布</span>
+        </div>
+        <select id="modelSelect" class="model-select">
+          <option value="normal" selected>正态分布（截断 ±3σ）</option>
+          <option value="uniform">均匀分布</option>
+          <option value="triangular">三角分布</option>
+          <option value="beta22">Beta(2,2)</option>
+          <option value="exponential">指数分布（截断）</option>
+        </select>
+        <p class="model-note" id="modelNote">中间高、两端低，边界外重采样</p>
+      </div>
+
+      <div class="field">
+        <div class="field-top">
+          <label for="addsRange">新增次数</label>
+          <div class="value-box">
+            <input id="addsNum" type="number" min="1" max="500" step="1" value="50" aria-label="新增次数">
+            <span>次</span>
+          </div>
+        </div>
+        <input id="addsRange" type="range" min="1" max="500" step="1" value="50" aria-label="新增次数滑块">
+        <div class="field-foot"><span>1</span><span>500</span></div>
+      </div>
+
+      <div class="field">
+        <div class="field-top">
+          <label for="growthRange">最强倍率上限</label>
+          <div class="value-box">
+            <input id="growthNum" type="number" min="1.01" max="2" step="0.01" value="1.10" aria-label="最强倍率上限">
+            <span>×</span>
+          </div>
+        </div>
+        <input id="growthRange" type="range" min="1.01" max="2" step="0.01" value="1.1" aria-label="最强倍率上限滑块">
+        <div class="field-foot"><span>1.01×</span><span>2.00×</span></div>
+      </div>
+
+      <div class="field">
+        <div class="field-top">
+          <label for="rankRange">最低强度名次</label>
+          <div class="value-box">
+            <input id="rankNum" type="number" min="1" max="100" step="1" value="15" aria-label="最低强度名次">
+            <span>名</span>
+          </div>
+        </div>
+        <input id="rankRange" type="range" min="1" max="100" step="1" value="15" aria-label="最低强度名次滑块">
+        <div class="field-foot"><span>第 1 强</span><span>第 100 强</span></div>
+      </div>
+
+      <div class="field">
+        <div class="field-top">
+          <label>明细显示间隔</label>
+          <span class="field-note">图表显示全过程</span>
+        </div>
+        <div class="segmented" id="intervalGroup" role="group" aria-label="明细显示间隔">
+          <button type="button" data-interval="5">每 5 次</button>
+          <button type="button" data-interval="10" class="active">每 10 次</button>
+          <button type="button" data-interval="1">全部</button>
+        </div>
+      </div>
+
+      <div class="field seed-field">
+        <div class="field-top">
+          <label for="seed">随机种子</label>
+          <span class="field-note">相同种子结果可复现</span>
+        </div>
+        <div class="seed-row">
+          <input id="seed" type="number" min="0" max="4294967295" step="1" value="42" aria-label="随机种子">
+          <button type="button" class="icon-btn" id="diceBtn" title="换一个随机种子" aria-label="换一个随机种子">🎲</button>
+        </div>
+      </div>
+
+      <button type="button" class="primary" id="runBtn">开始模拟 <span>→</span></button>
+      <button type="button" class="secondary" id="csvBtn" disabled>导出完整 CSV</button>
+
+      <details class="rules">
+        <summary>计算规则</summary>
+        <p>令 <code>L = 当前第 N 强</code>，<code>U = 当前最强 × 倍率</code>，则 <code>μ = (L+U)/2</code>，<code>σ = (U−L)/6</code>。从正态分布 N(μ, σ²) 抽样，并在 [L, U] 外重采样（截断正态）。</p>
+        <p>比率 = 当前最强 / 初始最强。新增干员允许超过 100，因为上限只由「当前最强 × 倍率」决定。</p>
+      </details>
+
+      <section class="avg-panel" aria-label="随机平均">
+        <div class="avg-head">
+          <div>
+            <h3>随机平均</h3>
+            <p>每轮重新随机，取最终结果的平均</p>
+          </div>
+          <div class="avg-runs">
+            <input id="avgRuns" type="number" min="1" max="500" step="1" value="50" aria-label="随机平均次数">
+            <span>次</span>
+          </div>
+        </div>
+
+        <div class="avg-main">
+          <span class="avg-main-label">平均增强</span>
+          <strong id="avgGain">—</strong>
+          <span class="avg-main-sub">最终最强 − 初始最强</span>
+        </div>
+
+        <div class="avg-row">
+          <div><span>平均最终比率</span><b id="avgRatio">—</b></div>
+          <div><span>平均最终最强</span><b id="avgMax">—</b></div>
+        </div>
+
+        <button type="button" class="avg-btn" id="avgBtn">重新随机取平均</button>
+        <p class="avg-hint" id="avgHint">50 次随机 · 当前参数</p>
+      </section>
+    </aside>
+
+    <section class="results">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">初始最强</div>
+          <div class="stat-value" id="statInitialMax">—</div>
+          <div class="stat-sub">100 名初始干员</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" id="rankStatLabel">初始第 15 强</div>
+          <div class="stat-value" id="statInitialRank">—</div>
+          <div class="stat-sub">新增强度的下限起点</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">最终最强</div>
+          <div class="stat-value" id="statFinalMax">—</div>
+          <div class="stat-sub" id="finalMaxSub">第 50 次生成后</div>
+        </div>
+        <div class="stat ratio">
+          <div class="stat-label">最终比率</div>
+          <div class="stat-value accent" id="statFinalRatio">—</div>
+          <div class="stat-sub">相对初始最强</div>
+        </div>
+      </div>
+
+      <div class="panel compare-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>只改变概率分布</h2>
+            <p class="panel-sub">同一组初始干员、同一种子、同一组参数；仅分布模型不同</p>
+          </div>
+          <div class="compare-select">
+            <label for="compareSelect">对比模型</label>
+            <select id="compareSelect" class="model-select compact">
+              <option value="uniform" selected>均匀分布</option>
+              <option value="normal">正态分布（截断 ±3σ）</option>
+              <option value="triangular">三角分布</option>
+              <option value="beta22">Beta(2,2)</option>
+              <option value="exponential">指数分布（截断）</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="compare-grid">
+          <div class="compare-card current">
+            <div class="compare-tag">当前模型</div>
+            <div class="compare-model" id="primaryModelName">正态分布（截断 ±3σ）</div>
+            <div class="compare-ratio" id="primaryCompareRatio">×—</div>
+            <div class="compare-meta">
+              <span>最终最强 <b id="primaryCompareMax">—</b></span>
+              <span>刷新 <b id="primaryCompareRefresh">—</b></span>
+            </div>
+          </div>
+
+          <div class="compare-vs">VS</div>
+
+          <div class="compare-card alt">
+            <div class="compare-tag">对比模型</div>
+            <div class="compare-model" id="compareModelName">均匀分布</div>
+            <div class="compare-ratio" id="compareRatio">×—</div>
+            <div class="compare-meta">
+              <span>最终最强 <b id="compareMax">—</b></span>
+              <span>刷新 <b id="compareRefresh">—</b></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="compare-diff" id="compareDiff">—</p>
+      </div>
+
+      <div class="panel dist-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>最后一次生成的分布</h2>
+            <p class="panel-sub" id="distSub">第 50 次生成前 · 截断正态</p>
+          </div>
+          <div class="dist-meta">
+            <span>L <b id="distL">—</b></span>
+            <span>μ <b id="distMu">—</b></span>
+            <span>U <b id="distU">—</b></span>
+            <span>σ <b id="distSigma">—</b></span>
+          </div>
+        </div>
+        <div class="dist-chart" id="distChart"></div>
+        <div class="dist-legend" id="distLegend">
+          <span><i class="sw sw1"></i>μ ± 1σ · ≈68.27%</span>
+          <span><i class="sw sw2"></i>μ ± 2σ · ≈95.45%</span>
+          <span><i class="sw sw3"></i>μ ± 3σ · ≈99.73%</span>
+          <span class="dist-note">边界外 0.27% 重采样 · 截断正态</span>
+        </div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>最强纪录曲线</h2>
+            <p class="panel-sub" id="chartSub">相对初始最强 · 线性坐标</p>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><i class="legend-dot current"></i><span id="legendPrimary">正态分布</span></span>
+            <span class="legend-item"><i class="legend-dot compare"></i><span id="legendCompare">均匀分布</span></span>
+            <span class="badge" id="refreshBadge">刷新 0 次</span>
+          </div>
+        </div>
+        <div class="chart" id="chart"></div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>生成明细</h2>
+            <p class="panel-sub" id="tableHint">每 10 次显示一行</p>
+          </div>
+          <span class="hint">完整数据可导出 CSV</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>次数</th>
+                <th>新增强度</th>
+                <th>当前最强</th>
+                <th>相对初始比率</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <footer class="footer">多分布版 · 所有随机数由种子驱动；同一组参数与种子会得到相同结果。</footer>
+</main>
+
+<script>
+/* =========================================================================
+   1. 模拟核心（纯函数，方便单独测试）
+   ========================================================================= */
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t = (t + Math.imul(t ^ (t >>> 7), t | 61)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function makeInitial(count, rand) {
+  const values = [];
+  const seen = new Set();
+  while (values.length < count) {
+    const x = rand() * 100;
+    if (!seen.has(x)) {
+      seen.add(x);
+      values.push(x);
+    }
+  }
+  return values;
+}
+
+function gaussian(rand) {
+  let u = 0;
+  while (u === 0) u = rand();
+  const v = rand();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+const DISTRIBUTIONS = {
+  uniform: {
+    label: "均匀分布",
+    short: "均匀",
+    note: "区间内每个强度等概率"
+  },
+  normal: {
+    label: "正态分布（截断 ±3σ）",
+    short: "正态",
+    note: "中间高、两端低，边界外重采样"
+  },
+  triangular: {
+    label: "三角分布",
+    short: "三角",
+    note: "中点为峰值，向两端线性下降"
+  },
+  beta22: {
+    label: "Beta(2,2)",
+    short: "Beta",
+    note: "中点偏高的平滑钟形"
+  },
+  exponential: {
+    label: "指数分布（截断）",
+    short: "指数",
+    note: "偏向区间下限，长尾向右"
+  }
+};
+
+const EXP_LAMBDA = 3.5;
+
+function distributionOf(id) {
+  return DISTRIBUTIONS[id] || DISTRIBUTIONS.normal;
+}
+
+function sampleNormalUnit(rand) {
+  const mu = 0.5;
+  const sigma = 1 / 6;
+  for (let i = 0; i < 10000; i += 1) {
+    const value = mu + sigma * gaussian(rand);
+    if (value >= 0 && value <= 1) return value;
+  }
+  return 0.5;
+}
+
+function sampleTriangularUnit(rand) {
+  const u = rand();
+  return u < 0.5 ? Math.sqrt(u / 2) : 1 - Math.sqrt((1 - u) / 2);
+}
+
+function sampleBeta22Unit(rand) {
+  const u = rand();
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 32; i += 1) {
+    const mid = (lo + hi) / 2;
+    const cdf = 3 * mid * mid - 2 * mid * mid * mid;
+    if (cdf < u) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+function sampleExponentialUnit(rand) {
+  const u = rand();
+  const denom = 1 - Math.exp(-EXP_LAMBDA);
+  return -Math.log(1 - u * denom) / EXP_LAMBDA;
+}
+
+function sampleUnit(rand, distribution) {
+  switch (distribution) {
+    case "uniform":
+      return rand();
+    case "triangular":
+      return sampleTriangularUnit(rand);
+    case "beta22":
+      return sampleBeta22Unit(rand);
+    case "exponential":
+      return sampleExponentialUnit(rand);
+    case "normal":
+    default:
+      return sampleNormalUnit(rand);
+  }
+}
+
+function distributionStats(distribution) {
+  if (distribution === "uniform") return { mean: 0.5, std: 1 / Math.sqrt(12) };
+  if (distribution === "triangular") return { mean: 0.5, std: 1 / Math.sqrt(24) };
+  if (distribution === "beta22") return { mean: 0.5, std: 1 / Math.sqrt(20) };
+  if (distribution === "exponential") {
+    const e = Math.exp(-EXP_LAMBDA);
+    const denom = 1 - e;
+    const mean = (1 - e * (1 + EXP_LAMBDA)) / (EXP_LAMBDA * denom);
+    const second = (2 - e * (EXP_LAMBDA * EXP_LAMBDA + 2 * EXP_LAMBDA + 2)) / (EXP_LAMBDA * EXP_LAMBDA * denom);
+    return { mean, std: Math.sqrt(Math.max(0, second - mean * mean)) };
+  }
+  return { mean: 0.5, std: 1 / 6 };
+}
+
+function distributionDensity(t, distribution) {
+  const x = Math.min(1, Math.max(0, t));
+  if (distribution === "uniform") return 1;
+  if (distribution === "triangular") return x <= 0.5 ? 4 * x : 4 * (1 - x);
+  if (distribution === "beta22") return 6 * x * (1 - x);
+  if (distribution === "exponential") {
+    const denom = 1 - Math.exp(-EXP_LAMBDA);
+    return (EXP_LAMBDA * Math.exp(-EXP_LAMBDA * x)) / denom;
+  }
+  const sigma = 1 / 6;
+  const z = (x - 0.5) / sigma;
+  return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI) * 0.9973002039367398);
+}
+
+function simulate(config) {
+  const adds = Math.max(1, Math.round(config.adds));
+  const growth = Math.max(1.000001, Number(config.growth));
+  const rank = Math.max(1, Math.round(config.rank));
+  const distribution = DISTRIBUTIONS[config.distribution] ? config.distribution : "normal";
+  const distStats = distributionStats(distribution);
+  const rand = mulberry32(Number(config.seed) >>> 0);
+
+  const initial = makeInitial(100, rand);
+  const initialMax = Math.max(...initial);
+  const initialRank = [...initial].sort((a, b) => b - a)[rank - 1];
+
+  const operators = initial.slice();
+  const rows = [];
+  let previousMax = initialMax;
+  let refreshCount = 0;
+
+  for (let step = 1; step <= adds; step += 1) {
+    const sorted = operators.slice().sort((a, b) => b - a);
+    const lower = sorted[rank - 1];
+    const upper = sorted[0] * growth;
+    const width = upper - lower;
+    const mu = lower + distStats.mean * width;
+    const sigma = distStats.std * width;
+
+    let value = lower + sampleUnit(rand, distribution) * width;
+    let attempts = 0;
+    while (operators.includes(value) && attempts < 100) {
+      value = lower + sampleUnit(rand, distribution) * width;
+      attempts += 1;
+    }
+    if (operators.includes(value)) value = lower + width / 2;
+
+    operators.push(value);
+    const max = Math.max(previousMax, value);
+    if (max > previousMax) refreshCount += 1;
+
+    rows.push({
+      step,
+      distribution,
+      value,
+      lower,
+      upper,
+      mu,
+      sigma,
+      max,
+      ratio: max / initialMax,
+      refreshed: max > previousMax
+    });
+    previousMax = max;
+  }
+
+  return { initial, initialMax, initialRank, rows, refreshCount, distribution };
+}
+
+function sampleRows(rows, interval) {
+  if (interval === 1) return rows.slice();
+  const sampled = rows.filter((row) => row.step % interval === 0);
+  const last = rows[rows.length - 1];
+  if (!sampled.length || sampled[sampled.length - 1].step !== last.step) sampled.push(last);
+  return sampled;
+}
+
+/* =========================================================================
+   2. 界面逻辑
+   ========================================================================= */
+
+if (typeof document !== "undefined") {
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    addsRange: $("addsRange"),
+    addsNum: $("addsNum"),
+    growthRange: $("growthRange"),
+    growthNum: $("growthNum"),
+    rankRange: $("rankRange"),
+    rankNum: $("rankNum"),
+    seed: $("seed"),
+    modelSelect: $("modelSelect"),
+    compareSelect: $("compareSelect"),
+    modelNote: $("modelNote"),
+    intervalGroup: $("intervalGroup"),
+    runBtn: $("runBtn"),
+    csvBtn: $("csvBtn"),
+    resetBtn: $("resetBtn"),
+    diceBtn: $("diceBtn"),
+    chart: $("chart"),
+    distChart: $("distChart"),
+    distSub: $("distSub"),
+    distL: $("distL"),
+    distMu: $("distMu"),
+    distU: $("distU"),
+    distSigma: $("distSigma"),
+    distLegend: $("distLegend"),
+    primaryModelName: $("primaryModelName"),
+    primaryCompareRatio: $("primaryCompareRatio"),
+    primaryCompareMax: $("primaryCompareMax"),
+    primaryCompareRefresh: $("primaryCompareRefresh"),
+    compareModelName: $("compareModelName"),
+    compareRatio: $("compareRatio"),
+    compareMax: $("compareMax"),
+    compareRefresh: $("compareRefresh"),
+    compareDiff: $("compareDiff"),
+    legendPrimary: $("legendPrimary"),
+    legendCompare: $("legendCompare"),
+    tbody: $("tbody"),
+    statInitialMax: $("statInitialMax"),
+    statInitialRank: $("statInitialRank"),
+    statFinalMax: $("statFinalMax"),
+    statFinalRatio: $("statFinalRatio"),
+    rankStatLabel: $("rankStatLabel"),
+    finalMaxSub: $("finalMaxSub"),
+    chartSub: $("chartSub"),
+    tableHint: $("tableHint"),
+    refreshBadge: $("refreshBadge"),
+    avgRuns: $("avgRuns"),
+    avgBtn: $("avgBtn"),
+    avgRatio: $("avgRatio"),
+    avgGain: $("avgGain"),
+    avgMax: $("avgMax"),
+    avgHint: $("avgHint")
+  };
+
+  const state = {
+    interval: 10,
+    result: null,
+    compareResult: null,
+    settings: null
+  };
+
+  let runTimer = null;
+
+  function fmt(value, digits) {
+    if (!Number.isFinite(value)) return "∞";
+    const abs = Math.abs(value);
+    if (abs >= 1e7 || (abs > 0 && abs < 1e-4)) return value.toExponential(2);
+    return value.toLocaleString("zh-CN", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    });
+  }
+
+  function fmtAxis(value) {
+    if (!Number.isFinite(value)) return "∞";
+    const abs = Math.abs(value);
+    if (abs >= 1e5 || (abs > 0 && abs < 0.01)) return value.toExponential(1);
+    return value.toFixed(abs >= 10 ? 1 : 2);
+  }
+
+  function readSettings() {
+    let adds = Number(els.addsNum.value);
+    let growth = Number(els.growthNum.value);
+    let rank = Number(els.rankNum.value);
+    let seed = Number(els.seed.value);
+    let distribution = els.modelSelect.value;
+    let compareDistribution = els.compareSelect.value;
+
+    adds = Number.isFinite(adds) ? clamp(Math.round(adds), 1, 500) : 50;
+    growth = Number.isFinite(growth) ? clamp(growth, 1.01, 2) : 1.1;
+    rank = Number.isFinite(rank) ? clamp(Math.round(rank), 1, 100) : 15;
+    seed = Number.isFinite(seed) ? Math.floor(seed) >>> 0 : 42;
+    if (!DISTRIBUTIONS[distribution]) distribution = "normal";
+    if (!DISTRIBUTIONS[compareDistribution]) compareDistribution = "uniform";
+    if (compareDistribution === distribution) {
+      compareDistribution = distribution === "uniform" ? "normal" : "uniform";
+      els.compareSelect.value = compareDistribution;
+    }
+
+    return { adds, growth, rank, seed, distribution, compareDistribution, interval: state.interval };
+  }
+
+  function setRangeAndNumber(rangeEl, numberEl, value, digits) {
+    rangeEl.value = String(value);
+    numberEl.value = digits === 2 ? Number(value).toFixed(2) : String(value);
+  }
+
+
+  let avgBusy = false;
+  let avgQueued = false;
+  let avgTimer = null;
+
+  function randomSeed32() {
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      const buffer = new Uint32Array(1);
+      crypto.getRandomValues(buffer);
+      return buffer[0];
+    }
+    return Math.floor(Math.random() * 4294967296);
+  }
+
+  function scheduleAverage(delay) {
+    window.clearTimeout(avgTimer);
+    avgTimer = window.setTimeout(runAverage, delay == null ? 220 : delay);
+  }
+
+  function runAverage() {
+    if (!state.settings) return;
+    if (avgBusy) {
+      avgQueued = true;
+      return;
+    }
+
+    let runs = Number(els.avgRuns.value);
+    runs = Number.isFinite(runs) ? clamp(Math.round(runs), 1, 500) : 50;
+    els.avgRuns.value = String(runs);
+    const settings = state.settings;
+
+    avgBusy = true;
+    els.avgBtn.disabled = true;
+    els.avgBtn.textContent = "计算中…";
+    els.avgHint.textContent = `${runs} 次随机计算中…`;
+
+    window.setTimeout(() => {
+      let ratioSum = 0;
+      let gainSum = 0;
+      let maxSum = 0;
+
+      for (let i = 0; i < runs; i += 1) {
+        const result = simulate({ ...settings, seed: randomSeed32() });
+        const last = result.rows[result.rows.length - 1];
+        ratioSum += last.ratio;
+        gainSum += last.max - result.initialMax;
+        maxSum += last.max;
+      }
+
+      els.avgRatio.textContent = `×${fmt(ratioSum / runs, 4)}`;
+      els.avgGain.textContent = `+${fmt(gainSum / runs, 4)}`;
+      els.avgMax.textContent = fmt(maxSum / runs, 4);
+      els.avgHint.textContent = `${runs} 次随机 · ${distributionOf(settings.distribution).short}`;
+      els.avgBtn.disabled = false;
+      els.avgBtn.textContent = "重新随机取平均";
+      avgBusy = false;
+
+      if (avgQueued) {
+        avgQueued = false;
+        scheduleAverage(20);
+      }
+    }, 30);
+  }
+
+  function runNow() {
+    const settings = readSettings();
+    const result = simulate(settings);
+    const compareResult = simulate({ ...settings, distribution: settings.compareDistribution });
+    state.result = result;
+    state.compareResult = compareResult;
+    state.settings = settings;
+
+    els.seed.value = String(settings.seed);
+    els.csvBtn.disabled = false;
+    render(result, compareResult, settings);
+    scheduleAverage(220);
+  }
+
+  function scheduleRun(delay) {
+    window.clearTimeout(runTimer);
+    runTimer = window.setTimeout(runNow, delay == null ? 160 : delay);
+  }
+
+  function bindPair(rangeId, numberId, digits) {
+    const range = $(rangeId);
+    const number = $(numberId);
+
+    range.addEventListener("input", () => {
+      number.value = digits === 2 ? Number(range.value).toFixed(2) : range.value;
+      scheduleRun(80);
+    });
+
+    number.addEventListener("input", () => {
+      const value = Number(number.value);
+      const min = Number(number.min);
+      const max = Number(number.max);
+      if (Number.isFinite(value) && value >= min && value <= max) {
+        range.value = String(value);
+        scheduleRun(180);
+      }
+    });
+
+    number.addEventListener("change", () => {
+      const min = Number(number.min);
+      const max = Number(number.max);
+      let value = Number(number.value);
+      if (!Number.isFinite(value)) value = Number(range.value);
+      value = clamp(value, min, max);
+      if (digits === 2) value = Math.round(value * 100) / 100;
+      else value = Math.round(value);
+      setRangeAndNumber(range, number, value, digits);
+      runNow();
+    });
+  }
+
+  function render(result, compareResult, settings) {
+    const last = result.rows[result.rows.length - 1];
+    const primaryMeta = distributionOf(settings.distribution);
+    const compareMeta = distributionOf(settings.compareDistribution);
+
+    els.rankStatLabel.textContent = `初始第 ${settings.rank} 强`;
+    els.statInitialMax.textContent = fmt(result.initialMax, 4);
+    els.statInitialRank.textContent = fmt(result.initialRank, 4);
+    els.statFinalMax.textContent = fmt(last.max, 4);
+    els.statFinalRatio.textContent = `×${fmt(last.ratio, 4)}`;
+    els.finalMaxSub.textContent = `第 ${settings.adds} 次生成后`;
+    els.modelNote.textContent = primaryMeta.note;
+    els.compareSelect.value = settings.compareDistribution;
+    els.legendPrimary.textContent = primaryMeta.label;
+    els.legendCompare.textContent = compareMeta.label;
+    els.chartSub.textContent = `相对初始最强 · ${primaryMeta.label} vs ${compareMeta.label}`;
+    els.refreshBadge.textContent = `当前模型刷新 ${result.refreshCount} 次`;
+
+    renderComparison(result, compareResult, settings);
+    renderChart(result, compareResult, settings);
+    renderDistribution(result, settings);
+    renderTable(result, settings);
+  }
+
+  function renderComparison(result, compareResult, settings) {
+    const last = result.rows[result.rows.length - 1];
+    const compareLast = compareResult.rows[compareResult.rows.length - 1];
+    const delta = compareLast.ratio - last.ratio;
+    const percent = last.ratio ? (delta / last.ratio) * 100 : 0;
+
+    els.primaryModelName.textContent = distributionOf(settings.distribution).label;
+    els.compareModelName.textContent = distributionOf(settings.compareDistribution).label;
+    els.primaryCompareRatio.textContent = `×${fmt(last.ratio, 4)}`;
+    els.compareRatio.textContent = `×${fmt(compareLast.ratio, 4)}`;
+    els.primaryCompareMax.textContent = fmt(last.max, 4);
+    els.compareMax.textContent = fmt(compareLast.max, 4);
+    els.primaryCompareRefresh.textContent = `${result.refreshCount} 次`;
+    els.compareRefresh.textContent = `${compareResult.refreshCount} 次`;
+
+    if (Math.abs(delta) < 1e-12) {
+      els.compareDiff.innerHTML = "两个模型在当前参数下得到相同结果。";
+    } else {
+      els.compareDiff.innerHTML =
+        `对比模型比当前模型 <b>${delta > 0 ? "高" : "低"}</b> ×${fmt(Math.abs(delta), 4)}` +
+        `（${percent > 0 ? "+" : ""}${percent.toFixed(1)}%）；两者使用同一初始阵容与种子。`;
+    }
+  }
+
+  function renderTable(result, settings) {
+    const sampled = sampleRows(result.rows, settings.interval);
+    const lastStep = result.rows[result.rows.length - 1].step;
+
+    const html = [
+      `<tr class="initial">
+        <td>初始</td>
+        <td>—</td>
+        <td>${fmt(result.initialMax, 4)}</td>
+        <td>1.000000</td>
+        <td><span class="muted">基准</span></td>
+      </tr>`
+    ];
+
+    for (const row of sampled) {
+      const isFinal = row.step === lastStep;
+      html.push(
+        `<tr class="${isFinal ? "final" : ""}">
+          <td>${row.step}</td>
+          <td>${fmt(row.value, 4)}</td>
+          <td>${fmt(row.max, 4)}</td>
+          <td>${fmt(row.ratio, 6)}</td>
+          <td>${row.refreshed ? '<span class="record">▲ 刷新</span>' : '<span class="muted">—</span>'}</td>
+        </tr>`
+      );
+    }
+
+    els.tbody.innerHTML = html.join("");
+    els.tableHint.textContent =
+      settings.interval === 1
+        ? `显示全部 ${settings.adds} 次，共 ${sampled.length} 行`
+        : `每 ${settings.interval} 次显示一行，共 ${sampled.length} 行（含初始）`;
+  }
+
+  function renderChart(result, compareResult, settings) {
+    const rows = result.rows;
+    const compareRows = compareResult.rows;
+    const n = rows.length;
+    const W = 920;
+    const H = 360;
+    const pad = { top: 26, right: 30, bottom: 48, left: 74 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    const ratios = rows.concat(compareRows).map((row) => row.ratio);
+    const minRatio = Math.min(1, ...ratios);
+    const maxRatio = Math.max(1, ...ratios);
+
+    let step = niceStep(Math.max(maxRatio - minRatio, 0.05), 5);
+    let yMin = Math.max(0, Math.floor(minRatio / step) * step);
+    let yMax = Math.ceil((maxRatio + step * 0.25) / step) * step;
+    if (yMax - yMin < step * 2) yMax = yMin + step * 2;
+
+    const yTicks = [];
+    for (let v = yMin; v <= yMax + step * 0.001; v += step) {
+      yTicks.push(v);
+    }
+
+    const x = (stepNumber) =>
+      pad.left + (n <= 1 ? plotW / 2 : ((stepNumber - 1) / (n - 1)) * plotW);
+    const y = (value) =>
+      pad.top + (1 - (value - yMin) / (yMax - yMin)) * plotH;
+
+    const lineFor = (sourceRows) => {
+      const points = sourceRows.map((row) => [x(row.step), y(row.ratio)]);
+      return {
+        points,
+        path: points
+          .map((point, index) => `${index ? "L" : "M"}${point[0].toFixed(2)},${point[1].toFixed(2)}`)
+          .join(" ")
+      };
+    };
+
+    const primaryLine = lineFor(rows);
+    const compareLine = lineFor(compareRows);
+    const baseY = y(yMin);
+    const areaPath =
+      `M${primaryLine.points[0][0].toFixed(2)},${baseY.toFixed(2)} ` +
+      primaryLine.points.map((point) => `L${point[0].toFixed(2)},${point[1].toFixed(2)}`).join(" ") +
+      ` L${primaryLine.points[primaryLine.points.length - 1][0].toFixed(2)},${baseY.toFixed(2)} Z`;
+
+    const yGrid = yTicks
+      .map(
+        (value) =>
+          `<line x1="${pad.left}" x2="${W - pad.right}" y1="${y(value).toFixed(2)}" y2="${y(value).toFixed(2)}" class="grid-line"/>` +
+          `<text x="${pad.left - 12}" y="${(y(value) + 4).toFixed(2)}" text-anchor="end" class="axis-text">${fmtAxis(value)}</text>`
+      )
+      .join("");
+
+    const rawXTicks = [
+      1,
+      Math.round(1 + (n - 1) * 0.25),
+      Math.round(1 + (n - 1) * 0.5),
+      Math.round(1 + (n - 1) * 0.75),
+      n
+    ];
+    const xTicks = [...new Set(rawXTicks)].filter((value) => value >= 1 && value <= n);
+    const xGrid = xTicks
+      .map(
+        (value) =>
+          `<line x1="${x(value).toFixed(2)}" x2="${x(value).toFixed(2)}" y1="${pad.top + plotH}" y2="${pad.top + plotH + 6}" class="tick-line"/>` +
+          `<text x="${x(value).toFixed(2)}" y="${pad.top + plotH + 24}" text-anchor="middle" class="axis-text">${value}</text>`
+      )
+      .join("");
+
+    const markerRowsFor = (sourceRows) => {
+      let markerRows = sampleRows(sourceRows, settings.interval);
+      const markerLimit = 80;
+      if (markerRows.length > markerLimit) {
+        const stride = Math.ceil(markerRows.length / markerLimit);
+        markerRows = markerRows.filter(
+          (_, index) => index % stride === 0 || index === markerRows.length - 1
+        );
+      }
+      return markerRows;
+    };
+
+    const markers = markerRowsFor(rows)
+      .map(
+        (row) =>
+          `<circle cx="${x(row.step).toFixed(2)}" cy="${y(row.ratio).toFixed(2)}" r="3.6" class="marker">` +
+          `<title>${distributionOf(settings.distribution).short} · 第 ${row.step} 次 · ×${fmt(row.ratio, 4)}</title></circle>`
+      )
+      .join("");
+
+    const compareMarkers = markerRowsFor(compareRows)
+      .map(
+        (row) =>
+          `<circle cx="${x(row.step).toFixed(2)}" cy="${y(row.ratio).toFixed(2)}" r="2.7" class="compare-marker">` +
+          `<title>${distributionOf(settings.compareDistribution).short} · 第 ${row.step} 次 · ×${fmt(row.ratio, 4)}</title></circle>`
+      )
+      .join("");
+
+    const last = rows[rows.length - 1];
+    const baselineY = y(1);
+    const baseline =
+      baselineY >= pad.top && baselineY <= pad.top + plotH
+        ? `<line x1="${pad.left}" x2="${W - pad.right}" y1="${baselineY.toFixed(2)}" y2="${baselineY.toFixed(2)}" class="baseline"/>` +
+          `<text x="${pad.left + 7}" y="${(baselineY - 7).toFixed(2)}" class="baseline-label">初始水平 1.00</text>`
+        : "";
+
+    const finalLabelY = Math.max(pad.top + 12, y(last.ratio) - 12);
+    const finalLabel =
+      `<text x="${Math.min(x(last.step), W - pad.right - 4).toFixed(2)}" y="${finalLabelY.toFixed(2)}" text-anchor="end" class="final-label">×${fmt(last.ratio, 3)}</text>`;
+
+    els.chart.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="两种概率分布下的最强纪录对比折线图">
+        <defs>
+          <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.30"/>
+            <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="lineStroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#c4b5fd"/>
+            <stop offset="100%" stop-color="#a78bfa"/>
+          </linearGradient>
+        </defs>
+        ${yGrid}
+        ${xGrid}
+        ${baseline}
+        <path d="${areaPath}" fill="url(#areaFill)" class="chart-area"/>
+        <path d="${primaryLine.path}" stroke="url(#lineStroke)" pathLength="1" class="chart-line"/>
+        <path d="${compareLine.path}" class="compare-line"/>
+        ${compareMarkers}
+        ${markers}
+        ${finalLabel}
+        <text x="${(pad.left + plotW / 2).toFixed(2)}" y="${H - 10}" text-anchor="middle" class="axis-title">新增次数</text>
+        <text transform="translate(18 ${(pad.top + plotH / 2).toFixed(2)}) rotate(-90)" text-anchor="middle" class="axis-title">相对初始比率</text>
+      </svg>`;
+  }
+
+  function renderDistribution(result, settings) {
+    const row = result.rows[result.rows.length - 1];
+    const L = row.lower;
+    const U = row.upper;
+    const mu = row.mu;
+    const sigma = row.sigma;
+    const distribution = settings.distribution;
+    const meta = distributionOf(distribution);
+
+    els.distSub.textContent = `第 ${row.step} 次生成前 · ${meta.short}`;
+    els.distL.textContent = fmt(L, 3);
+    els.distMu.textContent = fmt(mu, 3);
+    els.distU.textContent = fmt(U, 3);
+    els.distSigma.textContent = fmt(sigma, 3);
+    els.distLegend.innerHTML =
+      distribution === "normal"
+        ? `<span><i class="sw sw1"></i>μ ± 1σ · ≈68.27%</span>
+           <span><i class="sw sw2"></i>μ ± 2σ · ≈95.45%</span>
+           <span><i class="sw sw3"></i>μ ± 3σ · ≈99.73%</span>
+           <span class="dist-note">边界外 0.27% 重采样 · 截断正态</span>`
+        : `<span><i class="sw sw1"></i>${meta.label}</span>
+           <span class="dist-note">${meta.note} · 样本严格落在 [L, U]</span>`;
+
+    const W = 920;
+    const H = 178;
+    const pad = { top: 14, right: 24, bottom: 30, left: 48 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+    const baseY = pad.top + plotH;
+
+    const x = (value) => pad.left + ((value - L) / (U - L)) * plotW;
+    let yMax = 0;
+    for (let i = 0; i <= 240; i += 1) {
+      yMax = Math.max(yMax, distributionDensity(i / 240, distribution));
+    }
+    yMax *= 1.12;
+    const y = (t) => pad.top + plotH - (distributionDensity(t, distribution) / yMax) * plotH;
+
+    let areaPath = `M${x(L).toFixed(2)},${baseY.toFixed(2)}`;
+    for (let i = 0; i <= 240; i += 1) {
+      const t = i / 240;
+      areaPath += ` L${x(L + t * (U - L)).toFixed(2)},${y(t).toFixed(2)}`;
+    }
+    areaPath += ` L${x(U).toFixed(2)},${baseY.toFixed(2)} Z`;
+
+    let curve = "";
+    for (let i = 0; i <= 240; i += 1) {
+      const t = i / 240;
+      curve += `${i ? "L" : "M"}${x(L + t * (U - L)).toFixed(2)},${y(t).toFixed(2)}`;
+      if (i < 240) curve += " ";
+    }
+
+    const vertical = (value, color) =>
+      `<line x1="${x(value).toFixed(2)}" x2="${x(value).toFixed(2)}" y1="${pad.top}" y2="${baseY}" stroke="${color}" stroke-width="1.1" stroke-dasharray="4 4"/>`;
+
+    els.distChart.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="最后一次生成时的${meta.short}分布">
+        <defs>
+          <linearGradient id="distFill" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.10"/>
+            <stop offset="22%" stop-color="#a78bfa" stop-opacity="0.10"/>
+            <stop offset="38%" stop-color="#a78bfa" stop-opacity="0.26"/>
+            <stop offset="50%" stop-color="#a78bfa" stop-opacity="0.30"/>
+            <stop offset="62%" stop-color="#a78bfa" stop-opacity="0.26"/>
+            <stop offset="78%" stop-color="#a78bfa" stop-opacity="0.10"/>
+            <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.10"/>
+          </linearGradient>
+        </defs>
+        <path d="${areaPath}" fill="url(#distFill)"/>
+        <path d="${curve}" fill="none" stroke="#c4b5fd" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        ${vertical(L, "rgba(251,191,36,0.75)")}
+        ${vertical(mu, "rgba(216,180,254,0.85)")}
+        ${vertical(U, "rgba(251,191,36,0.75)")}
+        <line x1="${pad.left}" x2="${W - pad.right}" y1="${baseY}" y2="${baseY}" stroke="rgba(148,163,184,0.28)" stroke-width="1"/>
+        <text x="${x(L).toFixed(2)}" y="${H - 8}" text-anchor="middle" class="dist-axis-label" fill="#fbbf24">L</text>
+        <text x="${x(mu).toFixed(2)}" y="${H - 8}" text-anchor="middle" class="dist-axis-label" fill="#d8b4fe">μ</text>
+        <text x="${x(U).toFixed(2)}" y="${H - 8}" text-anchor="middle" class="dist-axis-label" fill="#fbbf24">U</text>
+      </svg>`;
+  }
+
+  function niceStep(span, targetTicks) {
+    const raw = span / Math.max(1, targetTicks);
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const normalized = raw / magnitude;
+    let nice;
+    if (normalized <= 1) nice = 1;
+    else if (normalized <= 2) nice = 2;
+    else if (normalized <= 2.5) nice = 2.5;
+    else if (normalized <= 5) nice = 5;
+    else nice = 10;
+    return nice * magnitude;
+  }
+
+  function exportCsv() {
+    if (!state.result || !state.settings) return;
+    const { rows, initialMax } = state.result;
+    const settings = state.settings;
+
+    const csvNumber = (value) => {
+      if (!Number.isFinite(value)) return "";
+      const abs = Math.abs(value);
+      if (abs >= 1e15 || (abs > 0 && abs < 1e-6)) return value.toExponential(10);
+      return value.toFixed(6);
+    };
+
+    const lines = [
+      ["次数", "分布模型", "新增强度", "下限_第N强", "上限_当前最强×倍率", "均值μ", "标准差σ", "当前最强", "初始最强", "相对初始比率", "是否刷新最强"].join(",")
+    ];
+
+    for (const row of rows) {
+      lines.push(
+        [
+          row.step,
+          distributionOf(row.distribution).label,
+          csvNumber(row.value),
+          csvNumber(row.lower),
+          csvNumber(row.upper),
+          csvNumber(row.mu),
+          csvNumber(row.sigma),
+          csvNumber(row.max),
+          csvNumber(initialMax),
+          csvNumber(row.ratio),
+          row.refreshed ? "是" : "否"
+        ].join(",")
+      );
+    }
+
+    const blob = new Blob([`\ufeff${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `干员强度模拟_${distributionOf(settings.distribution).short}_seed${settings.seed}_${settings.adds}次.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function applyDefaults() {
+    setRangeAndNumber(els.addsRange, els.addsNum, 50, 0);
+    setRangeAndNumber(els.growthRange, els.growthNum, 1.1, 2);
+    setRangeAndNumber(els.rankRange, els.rankNum, 15, 0);
+    els.seed.value = "42";
+    els.avgRuns.value = "50";
+    els.modelSelect.value = "normal";
+    els.compareSelect.value = "uniform";
+    els.modelNote.textContent = DISTRIBUTIONS.normal.note;
+    state.interval = 10;
+    [...els.intervalGroup.querySelectorAll("button")].forEach((button) => {
+      button.classList.toggle("active", Number(button.dataset.interval) === 10);
+    });
+  }
+
+  bindPair("addsRange", "addsNum", 0);
+  bindPair("growthRange", "growthNum", 2);
+  bindPair("rankRange", "rankNum", 0);
+
+  els.intervalGroup.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-interval]");
+    if (!button) return;
+    state.interval = Number(button.dataset.interval);
+    [...els.intervalGroup.querySelectorAll("button")].forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+    if (state.result && state.settings) {
+      state.settings.interval = state.interval;
+      render(state.result, state.compareResult, state.settings);
+    }
+  });
+
+  els.modelSelect.addEventListener("change", () => {
+    els.modelNote.textContent = distributionOf(els.modelSelect.value).note;
+    scheduleRun(60);
+  });
+
+  els.compareSelect.addEventListener("change", () => {
+    scheduleRun(60);
+  });
+
+  els.runBtn.addEventListener("click", runNow);
+  els.avgBtn.addEventListener("click", runAverage);
+  els.avgRuns.addEventListener("change", () => {
+    let value = Number(els.avgRuns.value);
+    value = Number.isFinite(value) ? clamp(Math.round(value), 1, 500) : 50;
+    els.avgRuns.value = String(value);
+    runAverage();
+  });
+  els.csvBtn.addEventListener("click", exportCsv);
+
+  els.resetBtn.addEventListener("click", () => {
+    applyDefaults();
+    runNow();
+  });
+
+  els.diceBtn.addEventListener("click", () => {
+    els.seed.value = String(Math.floor(Math.random() * 4294967295));
+    runNow();
+  });
+
+  els.seed.addEventListener("change", runNow);
+  els.seed.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") runNow();
+  });
+
+  applyDefaults();
+  runNow();
+}
+</script>
+</body>
+</html>
